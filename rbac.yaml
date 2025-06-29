@@ -1,0 +1,23 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: falco
+  name: falco-log-viewer
+rules:
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: falco
+  name: falco-log-viewer-binding
+subjects:
+- kind: User
+  name: security-team
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: falco-log-viewer
+  apiGroup: rbac.authorization.k8s.io

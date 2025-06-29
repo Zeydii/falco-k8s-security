@@ -1,0 +1,31 @@
+version: '3.8'
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+  backend:
+    build: ./backend
+    ports:
+      - "8081:80"
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: root
+    depends_on:
+      - db
+
+  db:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: login_app
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:

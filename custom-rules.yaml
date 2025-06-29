@@ -1,0 +1,154 @@
+falco:
+  customRules:
+    falco_rules.local.yaml: |
+      # Custom Falco rules
+      - rule: Unauthorized Pod Creation
+        desc: Detect unauthorized creation of pods in the cluster
+        condition: >
+          k8s_evt.type = "create" and k8s_evt.object = "pod" and
+          not k8s_evt.user.name in ("system:serviceaccount:kube-system:replicaset-controller", "system:serviceaccount:kube-system:deployment-controller")
+        output: >
+          Unauthorized pod creation detected (user=%k8s_evt.user.name pod=%k8s_evt.object.name namespace=%k8s_evt.object.namespace)
+        priority: WARNING
+        tags: [k8s, pod]
+
+      - rule: Privileged Container Created
+        desc: Detect creation of privileged containers
+        condition: >
+          k8s_evt.type = "create" and k8s_evt.object = "pod" and
+          k8s_pod.privileged = true
+        output: >
+          Privileged container created (user=%k8s_evt.user.name pod=%k8s_evt.object.name namespace=%k8s_evt.object.namespace)
+        priority: CRITICAL
+        tags: [k8s, container]
+
+      - rule: Unauthorized Access to Kubernetes Secrets
+        desc: Detect unauthorized access to Kubernetes secrets
+        condition: >
+          k8s_evt.type = "get" and k8s_evt.object = "secret" and
+          not k8s_evt.user.name in ("system:serviceaccount:kube-system:default", "system:serviceaccount:kube-system:clusterrole-aggregation-controller")
+        output: >
+          Unauthorized access to Kubernetes secret detected (user=%k8s_evt.user.name secret=%k8s_evt.object.name namespace=%k8s_evt.object.namespace)
+        priority: WARNING
+        tags: [k8s, secrets]
+
+      - rule: Shell Execution in Container
+        desc: Detect shell execution inside a container
+        condition: >
+          container.id != "" and evt.type = execve and proc.name in ("sh", "bash", "zsh", "dash")
+        output: >
+          Shell executed in container (user=%user.name container_id=%container.id container_name=%container.name image=%container.image.repository proc=%proc.name)
+        priority: WARNING
+        tags: [container, shell]
+
+      - rule: Unexpected Network Connection
+        desc: Detect unexpected outbound network connections
+        condition: >
+          container.id != "" and evt.type = connect and
+          not fd.sip in ("127.0.0.1", "0.0.0.0") and
+          not fd.sport in (80, 443, 8080)
+        output: >
+          Unexpected network connection detected (user=%user.name container_id=%container.id container_name=%container.name image=%container.image.repository fd=%fd.name)
+        priority: WARNING
+        tags: [network, container]
+
+      - rule: Sensitive File Access
+        desc: Detect access to sensitive files in containers
+        condition: >
+          container.id != "" and evt.type = open and
+          fd.name in ("/etc/passwd", "/etc/shadow", "/root/.ssh/id_rsa")
+        output: >
+          Sensitive file accessed in container (user=%user.name container_id=%container.id container_name=%container.name image=%container.image.repository file=%fd.name)
+        priority: WARNING
+        tags: [file_access, container]
+
+      - rule: Critical File Modification
+        desc: Detect modifications to critical files
+        condition: >
+          container.id != "" and evt.type in ("open", "write") and
+          fd.name in ("/etc/hosts", "/etc/resolv.conf")
+        output: >
+          Critical file modified in container (user=%user.name container_id=%container.id container_name=%container.name image=%container.image.repository file=%fd.name)
+        priority: WARNING
+        tags: [file_access, container]
+
+      - rule: Unauthorized Service Account Token Access
+        desc: Detect unauthorized access to service account tokens
+        condition: >
+          container.id != "" and evt.type = open and
+          fd.name contains "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        output: >
+          Unauthorized access to service account token detected (user=%user.name container_id=%container.id container_name=%container.name image=%container.image.repository file=%fd.name)
+        priority: CRITICAL
+        tags: [k8s, service_account]
+
+      - rule: Database Login Attempt
+        desc: Detect login attempts to the database
+        condition: >
+          container.id != "" and container.image contains "db" and
+          evt.type = execve and proc.name = "db"
+        output: >
+          Database login attempt detected (user=%user.name container_id=%container.id container_name=%container.name image=%container.image.repository proc=%proc.name)
+        priority: WARNING
+        tags: [database, container]
+
+      - rule: Unauthorized Role or RoleBinding Modification
+        desc: Detect unauthorized changes to Kubernetes roles or role bindings
+        condition: >
+          k8s_evt.type in ("create", "update", "delete") and
+          k8s_evt.object in ("role", "rolebinding") and
+          not k8s_evt.user.name in ("system:serviceaccount:kube-system:clusterrole-aggregation-controller")
+        output: >
+          Unauthorized modification of Kubernetes role or role binding detected (user=%k8s_evt.user.name object=%k8s_evt.object.name namespace=%k8s_evt.object.namespace)
+        priority: CRITICAL
+        tags: [k8s, rbac]
+
+      - rule: NodePort Service Created
+        desc: Detect creation of NodePort services
+        condition: >
+          k8s_evt.type = "create" and k8s_evt.object = "service" and
+          k8s_svc.type = "NodePort"
+        output: >
+          NodePort service created (user=%k8s_evt.user.name service=%k8s_evt.object.name namespace=%k8s_evt.object.namespace)
+        priority: WARNING
+        tags: [k8s, service]
+
+      - rule: Unauthorized Image Pull
+        desc: Detect unauthorized image pulls
+        condition: >
+          k8s_evt.type = "pull" and
+          not k8s_evt.user.name in ("system:serviceaccount:kube-system:default")
+        output: >
+          Unauthorized image pull detected (user=%k8s_evt.user.name image=%k8s_evt.object.name)
+        priority: WARNING
+        tags: [k8s, image]
+
+      - rule: Unauthorized Pod Deletion
+        desc: Detect unauthorized deletion of pods
+        condition: >
+          k8s_evt.type = "delete" and k8s_evt.object = "pod" and
+          not k8s_evt.user.name in ("system:serviceaccount:kube-system:replicaset-controller", "system:serviceaccount:kube-system:deployment-controller")
+        output: >
+          Unauthorized pod deletion detected (user=%k8s_evt.user.name pod=%k8s_evt.object.name namespace=%k8s_evt.object.namespace)
+        priority: CRITICAL
+        tags: [k8s, pod]
+
+      - rule: Unauthorized Exec into Pod
+        desc: Detect unauthorized exec into a pod
+        condition: >
+          k8s_evt.type = "exec" and
+          not k8s_evt.user.name in ("system:serviceaccount:kube-system:default")
+        output: >
+          Unauthorized exec into pod detected (user=%k8s_evt.user.name pod=%k8s_evt.object.name namespace=%k8s_evt.object.namespace)
+        priority: WARNING
+        tags: [k8s, exec]
+
+      - rule: Unauthorized Port Forwarding
+        desc: Detect unauthorized port forwarding to a pod
+        condition: >
+          k8s_evt.type = "portforward" and
+          not k8s_evt.user.name in ("system:serviceaccount:kube-system:default")
+        output: >
+          Unauthorized port forwarding detected (user=%k8s_evt.user.name pod=%k8s_evt.object.name namespace=%k8s_evt.object.namespace)
+        priority: WARNING
+        tags: [k8s, portforward]

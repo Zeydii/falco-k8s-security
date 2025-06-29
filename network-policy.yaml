@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: restrict-app-traffic
+  namespace: login-app
+spec:
+  podSelector: {}  # Applies to all pods in the namespace
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow frontend to talk to backend on port 80 (HTTP)
+  - from:
+    - podSelector:
+        matchLabels:
+          app: frontend
+    ports:
+    - protocol: TCP
+      port: 80
+
+  # Allow backend to talk to MySQL on port 3306
+  - from:
+    - podSelector:
+        matchLabels:
+          app: backend
+    ports:
+    - protocol: TCP
+      port: 3306
